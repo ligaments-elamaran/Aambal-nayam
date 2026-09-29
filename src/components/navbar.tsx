@@ -54,7 +54,7 @@ export default function Navbar() {
           <div className="flex items-center space-x-3">
             <Coffee className="w-8 h-8 text-amber-300" />
             <div>
-              <h1 className="text-xl font-bold tracking-tight">பாரம்பரிய சுவை தேநீர் அரங்கம்</h1>
+              <h1 className="text-xl font-bold tracking-tight">Aambal Nayam</h1>
               <p className="text-xs text-emerald-200">Heritage Tea Shop & Organic Store</p>
             </div>
           </div>
@@ -87,7 +87,7 @@ export default function Navbar() {
               <Coffee className="w-6 h-6 text-amber-300" />
             </div>
             <div>
-              <div className="text-lg font-bold tracking-tight leading-tight">பாரம்பரிய சுவை</div>
+              <div className="text-lg font-bold tracking-tight leading-tight">Aambal Nayam</div>
               <div className="text-[11px] text-emerald-200 leading-tight">Tea Shop & Organic Retail</div>
             </div>
           </Link>

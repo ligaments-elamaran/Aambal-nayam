@@ -1,0 +1,10 @@
+node_modules
+.next
+tea_shop.db
+tea_shop.db-journal
+tea_shop.db-wal
+tea_shop.db-shm
+.git
+.env
+.env.local
+npm-debug.log

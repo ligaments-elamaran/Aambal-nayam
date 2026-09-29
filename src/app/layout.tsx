@@ -3,7 +3,7 @@ import './globals.css';
 import Navbar from '@/components/navbar';
 
 export const metadata: Metadata = {
-  title: 'பாரம்பரிய சுவை தேநீர் & ஆர்கானிக் கடை - Tea Shop Management',
+  title: 'Aambal Nayam',
   description: 'Traditional Tea Shop, Organic Store Inventory, Attendance & POS Management System',
 };
 

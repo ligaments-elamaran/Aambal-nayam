@@ -1,0 +1,11 @@
+node_modules
+.next
+next-env.d.ts
+tea_shop.db
+tea_shop.db-journal
+tea_shop.db-wal
+tea_shop.db-shm
+tsconfig.tsbuildinfo
+.env
+.env.local
+fly.toml.bak

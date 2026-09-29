@@ -2,7 +2,7 @@ import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
 
-const dbPath = path.resolve(process.cwd(), 'tea_shop.db');
+const dbPath = process.env.TEA_SHOP_DB_PATH || path.resolve(process.cwd(), 'tea_shop.db');
 
 let dbInstance: Database.Database | null = null;
 
