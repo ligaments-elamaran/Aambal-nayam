@@ -26,6 +26,14 @@ export class AttendanceService {
       emp.total_present_days = stats.total_present || 0;
       emp.total_working_hours = Number((stats.total_hours || 0).toFixed(2));
       emp.total_overtime_hours = Number((stats.total_ot || 0).toFixed(2));
+
+      if (emp.salary_type === 'hourly') {
+        emp.estimated_pay = Number((emp.total_working_hours * emp.salary_rate).toFixed(2));
+      } else if (emp.salary_type === 'daily') {
+        emp.estimated_pay = Number((emp.total_present_days * emp.salary_rate).toFixed(2));
+      } else {
+        emp.estimated_pay = emp.salary_rate;
+      }
     }
 
     return employees;
@@ -59,6 +67,41 @@ export class AttendanceService {
     query += ` ORDER BY a.date DESC, e.employee_code ASC`;
 
     return db.prepare(query).all(...params) as AttendanceRecord[];
+  }
+
+  /**
+   * Update employee profile and salary details
+   */
+  static updateEmployee(id: string, data: {
+    name?: string;
+    phone?: string | null;
+    role?: string;
+    salary_type?: 'monthly' | 'daily' | 'hourly';
+    salary_rate?: number;
+    is_active?: number;
+  }): Employee {
+    const db = getDatabase();
+
+    db.prepare(`
+      UPDATE employees
+      SET name = COALESCE(?, name),
+          phone = COALESCE(?, phone),
+          role = COALESCE(?, role),
+          salary_type = COALESCE(?, salary_type),
+          salary_rate = COALESCE(?, salary_rate),
+          is_active = COALESCE(?, is_active)
+      WHERE id = ?
+    `).run(
+      data.name ?? null,
+      data.phone ?? null,
+      data.role ?? null,
+      data.salary_type ?? null,
+      data.salary_rate ?? null,
+      data.is_active ?? null,
+      id
+    );
+
+    return db.prepare('SELECT * FROM employees WHERE id = ?').get(id) as Employee;
   }
 
   /**

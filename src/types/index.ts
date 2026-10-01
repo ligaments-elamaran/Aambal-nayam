@@ -24,6 +24,7 @@ export interface Employee {
   total_present_days?: number;
   total_working_hours?: number;
   total_overtime_hours?: number;
+  estimated_pay?: number;
 }
 
 export interface AttendanceRecord {
