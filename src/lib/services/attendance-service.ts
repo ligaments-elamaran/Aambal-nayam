@@ -8,7 +8,7 @@ export class AttendanceService {
   static getEmployees(): Employee[] {
     const db = getDatabase();
     const employees = db.prepare(`
-      SELECT * FROM employees ORDER BY employee_code ASC
+      SELECT * FROM employees WHERE is_active = 1 ORDER BY employee_code ASC
     `).all() as Employee[];
 
     const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM

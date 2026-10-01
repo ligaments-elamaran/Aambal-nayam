@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Users, Clock, Calendar, CheckCircle2, UserCheck, AlertCircle, X, Edit2 } from 'lucide-react';
+import { Users, Clock, Calendar, CheckCircle2, UserCheck, AlertCircle, X, Edit2, Trash2 } from 'lucide-react';
 import { Employee, AttendanceRecord } from '@/types';
 import { formatDate, formatCurrency } from '@/lib/utils';
 
@@ -33,6 +33,11 @@ export default function AttendancePage() {
   });
   const [editSubmitting, setEditSubmitting] = useState(false);
   const [editError, setEditError] = useState('');
+
+  // Delete confirmation
+  const [deletingEmployee, setDeletingEmployee] = useState<Employee | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   const loadData = async () => {
     setLoading(true);
@@ -157,6 +162,26 @@ export default function AttendancePage() {
     }
   };
 
+  const handleDeleteEmployee = async () => {
+    if (!deletingEmployee) return;
+    setDeleting(true);
+    setDeleteError('');
+
+    try {
+      const res = await fetch(`/api/employees/${deletingEmployee.id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to delete employee');
+      }
+      setDeletingEmployee(null);
+      loadData();
+    } catch (err: any) {
+      setDeleteError(err.message);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -262,6 +287,13 @@ export default function AttendancePage() {
                   className="py-1.5 px-2.5 bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-300 rounded-lg text-xs transition"
                 >
                   <Edit2 className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => { setDeletingEmployee(emp); setDeleteError(''); }}
+                  title="Delete Employee"
+                  className="py-1.5 px-2.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg text-xs transition"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>
@@ -517,6 +549,43 @@ export default function AttendancePage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Delete Employee Confirmation */}
+      {deletingEmployee && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full overflow-hidden border border-slate-200">
+            <div className="p-6 space-y-4">
+              <div className="flex items-center gap-3 text-red-700">
+                <AlertCircle className="w-6 h-6" />
+                <h3 className="font-bold text-base">ஊழியரை நீக்கு (Delete Employee)</h3>
+              </div>
+              <p className="text-xs text-slate-600">
+                <span className="font-bold">{deletingEmployee.name}</span> ({deletingEmployee.employee_code}) ஐ நீக்க வேண்டுமா? இவர் பட்டியலில் இருந்து மறைக்கப்படுவார். கடந்த வருகை மற்றும் சம்பள பதிவுகள் பாதுகாக்கப்படும். (This will hide them from the active roster. Past attendance and pay records are kept.)
+              </p>
+              {deleteError && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 font-semibold text-xs">
+                  {deleteError}
+                </div>
+              )}
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={() => setDeletingEmployee(null)}
+                  className="flex-1 py-2 border border-slate-300 text-slate-700 font-bold rounded-lg hover:bg-slate-50 transition text-xs"
+                >
+                  ரத்து (Cancel)
+                </button>
+                <button
+                  onClick={handleDeleteEmployee}
+                  disabled={deleting}
+                  className="flex-1 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition text-xs disabled:opacity-50"
+                >
+                  {deleting ? 'நீக்கப்படுகிறது...' : 'நீக்கு (Delete)'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
