@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Users, Clock, Calendar, CheckCircle2, UserCheck, AlertCircle, X, Edit2, Trash2 } from 'lucide-react';
+import { Users, Clock, Calendar, CheckCircle2, UserCheck, AlertCircle, X, Edit2, Trash2, UserPlus } from 'lucide-react';
 import { Employee, AttendanceRecord } from '@/types';
 import { formatDate, formatCurrency } from '@/lib/utils';
 
@@ -38,6 +38,20 @@ export default function AttendancePage() {
   const [deletingEmployee, setDeletingEmployee] = useState<Employee | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+
+  // Add Employee Modal
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [addForm, setAddForm] = useState({
+    employee_code: '',
+    name: '',
+    phone: '',
+    role: '',
+    joining_date: new Date().toISOString().slice(0, 10),
+    salary_type: 'daily' as 'monthly' | 'daily' | 'hourly',
+    salary_rate: '',
+  });
+  const [addSubmitting, setAddSubmitting] = useState(false);
+  const [addError, setAddError] = useState('');
 
   const loadData = async () => {
     setLoading(true);
@@ -182,6 +196,49 @@ export default function AttendancePage() {
     }
   };
 
+  const handleAddEmployee = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAddSubmitting(true);
+    setAddError('');
+
+    try {
+      const res = await fetch('/api/employees', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          employee_code: addForm.employee_code,
+          name: addForm.name,
+          phone: addForm.phone || undefined,
+          role: addForm.role,
+          joining_date: addForm.joining_date,
+          salary_type: addForm.salary_type,
+          salary_rate: Number(addForm.salary_rate) || 0,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to add employee');
+      }
+
+      setShowAddModal(false);
+      setAddForm({
+        employee_code: '',
+        name: '',
+        phone: '',
+        role: '',
+        joining_date: new Date().toISOString().slice(0, 10),
+        salary_type: 'daily',
+        salary_rate: '',
+      });
+      loadData();
+    } catch (err: any) {
+      setAddError(err.message);
+    } finally {
+      setAddSubmitting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -204,6 +261,13 @@ export default function AttendancePage() {
             onChange={(e) => setSelectedDate(e.target.value)}
             className="p-2 border border-slate-300 rounded-lg text-xs bg-white font-semibold focus:ring-1 focus:ring-emerald-600"
           />
+          <button
+            onClick={() => { setShowAddModal(true); setAddError(''); }}
+            className="flex items-center gap-1.5 px-3 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold transition shadow-sm"
+          >
+            <UserPlus className="w-4 h-4" />
+            <span>புதிய ஊழியர் (Add Employee)</span>
+          </button>
         </div>
       </div>
 
@@ -586,6 +650,130 @@ export default function AttendancePage() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Add New Employee */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden border border-slate-200">
+            <div className="bg-emerald-800 text-white p-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <UserPlus className="w-5 h-5 text-amber-300" />
+                <h3 className="font-bold text-base">புதிய ஊழியர் சேர் (Add Employee)</h3>
+              </div>
+              <button onClick={() => setShowAddModal(false)} className="text-emerald-200 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddEmployee} className="p-6 space-y-4 text-xs">
+              {addError && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 font-semibold">
+                  {addError}
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">குறியீடு (Employee Code)</label>
+                  <input
+                    type="text"
+                    required
+                    value={addForm.employee_code}
+                    onChange={(e) => setAddForm({ ...addForm, employee_code: e.target.value })}
+                    placeholder="EMP005"
+                    className="w-full p-2 border border-slate-300 rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">சேர்ந்த தேதி (Joining Date)</label>
+                  <input
+                    type="date"
+                    required
+                    value={addForm.joining_date}
+                    onChange={(e) => setAddForm({ ...addForm, joining_date: e.target.value })}
+                    className="w-full p-2 border border-slate-300 rounded-lg"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">பெயர் (Name)</label>
+                <input
+                  type="text"
+                  required
+                  value={addForm.name}
+                  onChange={(e) => setAddForm({ ...addForm, name: e.target.value })}
+                  className="w-full p-2 border border-slate-300 rounded-lg"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">பொறுப்பு (Role)</label>
+                  <input
+                    type="text"
+                    required
+                    value={addForm.role}
+                    onChange={(e) => setAddForm({ ...addForm, role: e.target.value })}
+                    placeholder="Tea Master"
+                    className="w-full p-2 border border-slate-300 rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">தொலைபேசி (Phone)</label>
+                  <input
+                    type="text"
+                    value={addForm.phone}
+                    onChange={(e) => setAddForm({ ...addForm, phone: e.target.value })}
+                    className="w-full p-2 border border-slate-300 rounded-lg"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">சம்பள முறை (Salary Type)</label>
+                  <select
+                    value={addForm.salary_type}
+                    onChange={(e) => setAddForm({ ...addForm, salary_type: e.target.value as any })}
+                    className="w-full p-2 border border-slate-300 rounded-lg bg-white"
+                  >
+                    <option value="monthly">மாதாந்திரம் (Monthly)</option>
+                    <option value="daily">தினசரி (Daily)</option>
+                    <option value="hourly">மணி நேர அடிப்படையில் (Hourly)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    சம்பள விகிதம் (₹)
+                    {addForm.salary_type === 'hourly' && ' / hour'}
+                    {addForm.salary_type === 'daily' && ' / day'}
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min="0"
+                    step="0.01"
+                    value={addForm.salary_rate}
+                    onChange={(e) => setAddForm({ ...addForm, salary_rate: e.target.value })}
+                    className="w-full p-2 border border-slate-300 rounded-lg"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={addSubmitting}
+                  className="w-full py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-lg transition shadow disabled:opacity-50"
+                >
+                  {addSubmitting ? 'சேமிக்கப்படுகிறது...' : 'ஊழியரை சேமி (Save Employee)'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
