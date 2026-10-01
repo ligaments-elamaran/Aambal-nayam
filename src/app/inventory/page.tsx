@@ -1,17 +1,20 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { 
-  Boxes, 
-  ArrowRightLeft, 
-  AlertTriangle, 
-  Plus, 
-  Search, 
-  X, 
-  CheckCircle2, 
-  Warehouse, 
+import {
+  Boxes,
+  ArrowRightLeft,
+  AlertTriangle,
+  Plus,
+  Search,
+  X,
+  CheckCircle2,
+  Warehouse,
   Store,
-  RefreshCw
+  RefreshCw,
+  Edit2,
+  Trash2,
+  AlertCircle
 } from 'lucide-react';
 import { InventoryLevel, StockTransfer } from '@/types';
 import { formatCurrency } from '@/lib/utils';
@@ -42,6 +45,18 @@ export default function InventoryPage() {
   const [adjReason, setAdjReason] = useState('');
   const [adjSubmitting, setAdjSubmitting] = useState(false);
   const [adjError, setAdjError] = useState('');
+
+  // Edit stock row modal (quantity + min stock level)
+  const [editingItem, setEditingItem] = useState<InventoryLevel | null>(null);
+  const [editQuantity, setEditQuantity] = useState('');
+  const [editMinStock, setEditMinStock] = useState('');
+  const [editSubmitting, setEditSubmitting] = useState(false);
+  const [editError, setEditError] = useState('');
+
+  // Delete (deactivate) variant confirmation
+  const [deletingItem, setDeletingItem] = useState<InventoryLevel | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   const loadStockData = async () => {
     setLoading(true);
@@ -145,6 +160,86 @@ export default function InventoryPage() {
       setAdjError(err.message);
     } finally {
       setAdjSubmitting(false);
+    }
+  };
+
+  const openEditModal = (item: InventoryLevel) => {
+    setEditingItem(item);
+    setEditQuantity(item.quantity.toString());
+    setEditMinStock((item.min_stock_level ?? 5).toString());
+    setEditError('');
+  };
+
+  const handleUpdateStock = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingItem) return;
+    setEditSubmitting(true);
+    setEditError('');
+
+    try {
+      const newQty = Number(editQuantity);
+      const newMinStock = Number(editMinStock);
+      const delta = newQty - editingItem.quantity;
+
+      if (delta !== 0) {
+        const res = await fetch('/api/inventory/adjustment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            variant_id: editingItem.variant_id,
+            location: editingItem.location,
+            quantity: delta,
+            type: 'adjustment',
+            reason: 'Manual stock count correction (Inventory edit)',
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to update quantity');
+      }
+
+      if (newMinStock !== editingItem.min_stock_level && editingItem.product_id) {
+        const res = await fetch(`/api/products/${editingItem.product_id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            variants: [{ id: editingItem.variant_id, min_stock_level: newMinStock }],
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to update minimum stock level');
+      }
+
+      setEditingItem(null);
+      loadStockData();
+    } catch (err: any) {
+      setEditError(err.message);
+    } finally {
+      setEditSubmitting(false);
+    }
+  };
+
+  const handleDeleteItem = async () => {
+    if (!deletingItem || !deletingItem.product_id) return;
+    setDeleting(true);
+    setDeleteError('');
+
+    try {
+      const res = await fetch(`/api/products/${deletingItem.product_id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          variants: [{ id: deletingItem.variant_id, is_active: 0 }],
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to delete item');
+
+      setDeletingItem(null);
+      loadStockData();
+    } catch (err: any) {
+      setDeleteError(err.message);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -311,12 +406,13 @@ export default function InventoryPage() {
                   <th className="p-3 text-right">குறைந்தபட்ச அளவு</th>
                   <th className="p-3 text-right">விற்பனை விலை</th>
                   <th className="p-3 text-center">நிலை (Status)</th>
+                  <th className="p-3 text-right">செயல்கள் (Actions)</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredStock.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="p-6 text-center text-slate-400">
+                    <td colSpan={9} className="p-6 text-center text-slate-400">
                       பொருட்கள் ஏதும் இல்லை (No stock rows found).
                     </td>
                   </tr>
@@ -365,6 +461,24 @@ export default function InventoryPage() {
                               போதுமானது
                             </span>
                           )}
+                        </td>
+                        <td className="p-3 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => openEditModal(item)}
+                              title="Edit"
+                              className="p-1.5 rounded-lg text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 transition"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => { setDeletingItem(item); setDeleteError(''); }}
+                              title="Delete"
+                              className="p-1.5 rounded-lg text-slate-500 hover:text-red-700 hover:bg-red-50 transition"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -614,6 +728,116 @@ export default function InventoryPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Edit Stock Row (Quantity & Min Stock Level) */}
+      {editingItem && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full overflow-hidden border border-slate-200">
+            <div className="bg-emerald-800 text-white p-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Edit2 className="w-5 h-5 text-amber-300" />
+                <div>
+                  <h3 className="font-bold text-base">இருப்பை திருத்து (Edit Stock)</h3>
+                  <p className="text-[11px] text-emerald-200">
+                    {editingItem.product_name_tamil} - {editingItem.variant_name} ({editingItem.location})
+                  </p>
+                </div>
+              </div>
+              <button onClick={() => setEditingItem(null)} className="text-emerald-200 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateStock} className="p-6 space-y-4 text-xs">
+              {editError && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 font-semibold">
+                  {editError}
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    கையிருப்பு (Quantity, {editingItem.unit})
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    required
+                    value={editQuantity}
+                    onChange={(e) => setEditQuantity(e.target.value)}
+                    className="w-full p-2 border border-slate-300 rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">குறைந்தபட்ச அளவு (Min Stock)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    required
+                    value={editMinStock}
+                    onChange={(e) => setEditMinStock(e.target.value)}
+                    className="w-full p-2 border border-slate-300 rounded-lg"
+                  />
+                </div>
+              </div>
+
+              <p className="text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-lg p-2">
+                கையிருப்பு மாற்றங்கள் தணிக்கை பதிவேட்டில் பதிவாகும். (Quantity changes are logged in the audit trail as a manual count correction.)
+              </p>
+
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={editSubmitting}
+                  className="w-full py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-lg transition shadow disabled:opacity-50"
+                >
+                  {editSubmitting ? 'சேமிக்கப்படுகிறது...' : 'மாற்றங்களை சேமி (Save Changes)'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Delete (Deactivate) Variant Confirmation */}
+      {deletingItem && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full overflow-hidden border border-slate-200">
+            <div className="p-6 space-y-4">
+              <div className="flex items-center gap-3 text-red-700">
+                <AlertCircle className="w-6 h-6" />
+                <h3 className="font-bold text-base">பொருளை நீக்கு (Delete Item)</h3>
+              </div>
+              <p className="text-xs text-slate-600">
+                <span className="font-bold">{deletingItem.product_name_tamil} - {deletingItem.variant_name}</span> ({deletingItem.sku}) ஐ நீக்க வேண்டுமா? இது மெனு மற்றும் POS-இல் இருந்தும் மறைக்கப்படும். (This removes the SKU from inventory, menu, and POS. Past sales/purchase records are kept.)
+              </p>
+              {deleteError && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 font-semibold text-xs">
+                  {deleteError}
+                </div>
+              )}
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={() => setDeletingItem(null)}
+                  className="flex-1 py-2 border border-slate-300 text-slate-700 font-bold rounded-lg hover:bg-slate-50 transition text-xs"
+                >
+                  ரத்து (Cancel)
+                </button>
+                <button
+                  onClick={handleDeleteItem}
+                  disabled={deleting}
+                  className="flex-1 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition text-xs disabled:opacity-50"
+                >
+                  {deleting ? 'நீக்கப்படுகிறது...' : 'நீக்கு (Delete)'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

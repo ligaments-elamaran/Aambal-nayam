@@ -14,6 +14,7 @@ export class InventoryService {
         il.location,
         il.quantity,
         il.updated_at,
+        pv.product_id,
         p.tamil_name as product_name_tamil,
         p.english_name as product_name_english,
         p.category,

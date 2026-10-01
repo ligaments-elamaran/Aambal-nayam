@@ -82,6 +82,7 @@ export interface InventoryLevel {
   quantity: number;
   updated_at: string;
   // joined info
+  product_id?: string;
   product_name_tamil?: string;
   product_name_english?: string;
   variant_name?: string;
